@@ -2,11 +2,6 @@
 #define  Trig A4 
 #define  Echo A5
 
-long previous_spin1 = 0;
-long previous_spin2 = 0;
-long accumulated_change_spin1 = 0;
-long accumulated_change_spin2 = 0;
-
 /*
 Function: obtain ultrasonic sensor ranging data
 Parameters: Trig, Echo
@@ -34,8 +29,6 @@ void motor1(int steep1, int steep2)
 {
    analogWrite(5,steep1);
    analogWrite(6,steep2);
-   accumulated_change_spin1 = abs(steep1 + steep2 - previous_spin1);
-   previous_spin1 = steep1 + steep2;
 }
 
 //Motor 2 output definition
@@ -43,6 +36,4 @@ void motor2(int steep1, int steep2)
 {
    analogWrite(9,steep1);
    analogWrite(10,steep2);
-   accumulated_change_spin2 = abs(steep1 + steep2 - previous_spin1);
-   previous_spin2 = steep1 + steep2;
 }
