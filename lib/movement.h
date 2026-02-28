@@ -1,45 +1,66 @@
 #include "ADCS.h"
 
-// --- Calibration Constants (TUNE THESE!) ---
-// How many milliseconds does it take to turn 1 degree?
-// Calculate this by timing a 360 spin. (e.g., if 360 takes 1800ms, this is 5.0)
-const float MS_PER_DEG = 5.2; 
-const int TURN_SPEED = 180;   // A fixed reliable speed for turning
+const float MS_PER_DEG = 3.2;   // Calibrated value
+const int CRUISE_SPEED = 150;   // Speed used for all precision moves
+const int kTurnSpeed = 180;     // Speed used for turning
 
-// --- Helper: Stop ---
+const float MS_PER_CM = 27.8;   // cruising rate
+const int STARTUP_MS = 55.2;    // y-intercept
+
 void stopMotors() {
     motorL(0,0);
     motorR(0,0);
 }
 
-// --- The New Function: Turn by Angle ---
-// angle: degrees to turn (positive = Left, negative = Right)
-void turn(int angle) {
-    if (angle == 0) return;
-
-    int duration = abs(angle) * MS_PER_DEG;
-    
-    if (angle > 0) {
-        // Turn LEFT (Left motor back, Right motor fwd)
-        // Adjust these 0/speed pairs based on your specific motor wiring
-        motorL(0, TURN_SPEED);      
-        motorR(TURN_SPEED, 0);      
-    } else {
-        // Turn RIGHT (Left motor fwd, Right motor back)
-        motorL(TURN_SPEED, 0);
-        motorR(0, TURN_SPEED);
-    }
-
-    delay(duration); // Block until turn is complete
-    stopMotors();    // Important: Stop immediately after
-    delay(100);      // Short pause to let inertia settle
+// raw functions
+void forward(int speed) {
+    int r = speed - offset;
+    if (r < 0) r = 0;
+    motorL(speed, 0);
+    motorR(r, 0);
 }
 
-// Wrapper for your specific request
+void reverse(int speed) {
+    int r = speed - offset;
+    if (r < 0) r = 0;
+    motorL(0, speed);
+    motorR(0, r);
+}
+
+void forward_dist(float cm) {
+    if (cm <= 0) return;
+
+    // Calculate time using y = mx + c
+    unsigned long duration = (cm * MS_PER_CM) + STARTUP_MS;
+    forward(CRUISE_SPEED);
+    delay(duration);
+    stopMotors();
+    delay(100);
+}
+
+void reverse_dist(float cm) {
+    if (cm <= 0) return;
+
+    unsigned long duration = (cm * MS_PER_CM) + STARTUP_MS;
+    
+    reverse(CRUISE_SPEED);
+    delay(duration);
+    stopMotors();
+    delay(100);
+}
+
 void turnLeft(int degrees) {
-    turn(degrees);
+    unsigned long duration = degrees * MS_PER_DEG;
+    motorL(0, kTurnSpeed);       
+    motorR(kTurnSpeed - offset, 0); 
+    delay(duration);
+    stopMotors();
 }
 
 void turnRight(int degrees) {
-    turn(-degrees);
+    unsigned long duration = degrees * MS_PER_DEG;
+    motorL(kTurnSpeed, 0);       
+    motorR(0, kTurnSpeed - offset); 
+    delay(duration);
+    stopMotors();
 }
