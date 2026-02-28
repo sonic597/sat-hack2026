@@ -15,10 +15,10 @@
 //   RECENTRE  – after dodge, if too close to a box edge, drift back to centre
 
 #include <calibration.h>
-#include "../../lib/hal.h"
-#include "../../lib/movement.h"
-#include "../../lib/sensing.h"
-#include "../../lib/localize.h"
+#include <hal.h>
+#include <movement.h>
+#include <sensing.h>
+#include <localize.h>
 
 // -------------------------------------------------------------------------
 // Stage 1 tuning constants
