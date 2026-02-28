@@ -1,6 +1,3 @@
-// =========================================================================
-// Pin Definitions
-// =========================================================================
 const int PIN_MOTOR_L_FWD = 5;
 const int PIN_MOTOR_L_REV = 6;
 const int PIN_MOTOR_R_FWD = 9;
@@ -8,22 +5,16 @@ const int PIN_MOTOR_R_REV = 10;
 const int PIN_TRIG        = A4;
 const int PIN_ECHO        = A5;
 
-// =========================================================================
-// Calibration Constants
-// =========================================================================
 const int REF_SPEED         = 180;    // reference speed for timing calibration
-const float MS_PER_CM       = 12.0f;  // adjust after driving test
-const float MS_PER_DEG      = 3.25f;   // adjust after rotation test
-const float TRIM_L          = 1.2f;   // left motor multiplier
+const float MS_PER_CM       = 24.0f;  // adjust after driving test
+const float MS_PER_DEG      = 24.0f;   // adjust after rotation test
+const float TRIM_L          = 1.25f;   // left motor multiplier
 const float TRIM_R          = 1.05f;   // right motor multiplier
 
 // Sensor offset (cm) from axle centre
-const float SENSOR_OFFSET_X = 0.0f;   // currently using side mount
+const float SENSOR_OFFSET_X = 0.0f;   // currently using forward mount
 const float SENSOR_OFFSET_Y = 9.0f;
 
-// =========================================================================
-// Motor control (inline)
-// =========================================================================
 void motors_stop() {
     analogWrite(PIN_MOTOR_L_FWD, 0);
     analogWrite(PIN_MOTOR_L_REV, 0);
@@ -69,9 +60,6 @@ void motors_right(int speed) {
     analogWrite(PIN_MOTOR_R_REV, right);
 }
 
-// =========================================================================
-// Sensor reading (inline)
-// =========================================================================
 float read_raw_distance() {
     // Single HC-SR04 measurement
     digitalWrite(PIN_TRIG, LOW);
@@ -121,7 +109,7 @@ void test_trim() {
 void test_distance() {
     Serial.println("DISTANCE TEST: driving forward 3000 ms at REF_SPEED");
     motors_forward(REF_SPEED);
-    delay(3000);
+    delay(5000);
     motors_stop();
     Serial.println("Done. Measure actual distance travelled.");
     Serial.println("For calibration: MS_PER_CM = 3000 / distance_cm");
@@ -185,7 +173,7 @@ void setup() {
 
     Serial.println("\n=== Standalone Calibration Helper ===");
     print_help();
-    test_rotation();
+    test_distance();
 }
 
 void loop() {

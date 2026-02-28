@@ -15,7 +15,7 @@
 // If the car drifts left when driving straight, TRIM_R is too high or TRIM_L is too low.
 // Procedure: drive straight 2m, measure actual drift, adjust trim factors.
 // =========================================================================
-#define TRIM_L        1.2f    // left motor multiplier (adjust if car drifts)
+#define TRIM_L        1.25f    // left motor multiplier (adjust if car drifts)
 #define TRIM_R        1.05f    // right motor multiplier
 
 // =========================================================================
