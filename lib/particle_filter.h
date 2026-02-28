@@ -1,6 +1,55 @@
 #ifndef PARTICLE_FILTER_H
 #define PARTICLE_FILTER_H
 
+// Particle filter localization for maze navigation (stages 2 & 3).
+// Fuses dead-reckoning motion (from localize.h) with ultrasonic sensor
+// readings against a 2-bit packed occupancy grid to correct pose drift.
+//
+// Memory: ~714 bytes steady-state, ~954 bytes peak (during resample).
+// Timing: pf_update ~35-55ms on 16MHz AVR, pf_predict ~1ms.
+//
+// Setup (in setup()):
+//
+//   #include "localize.h"
+//   #include "particle_filter.h"
+//
+//   // After mapping is initialized:
+//   pf_set_map(map_get_grid(), MAP_W, MAP_H, CELL_CM);
+//
+//   // Sensor offset from robot center in body frame (cm).
+//   // Body +X = right, +Y = forward.
+//   pf_set_sensor_offset(0.0, 5.0);  // sensor 5cm ahead of center
+//
+//   // Seed particles at starting position (spread in cm and degrees).
+//   pf_init(start_x, start_y, start_heading, 5.0, 5.0);
+//
+// Drive loop (called after each motion command):
+//
+//   // 1. Tell both dead-reckoning and particle filter about motion.
+//   loc_update_forward(cm);
+//   pf_predict_forward(cm, 2.0);   // 2cm noise std dev
+//
+//   loc_update_turn(deg);
+//   pf_predict_turn(deg, 3.0);     // 3deg noise std dev
+//
+//   // 2. Take a sensor reading and update the filter.
+//   float dist = read_ultrasonic_cm();
+//   pf_update(dist);  // weights + resamples internally
+//
+//   // 3. Get corrected pose estimate.
+//   Pose est = pf_estimate();
+//
+//   // 4. Optionally feed back into dead-reckoning to prevent drift.
+//   loc_correct(est.x, est.y);
+//
+// Notes:
+//   - pf_update skips readings <= 2cm or >= 299cm automatically.
+//   - Tolerant of occasional outlier readings (e.g. through wall gaps)
+//     thanks to a uniform mixture likelihood floor.
+//   - If all particles lose track, it reinitializes from loc_get().
+//   - The grid must use 2-bit packing: byte[idx/4], bits (idx%4)*2,
+//     where 0=FREE, 1=UNKNOWN, 2=WALL, 3=DYNAMIC.
+
 #include "localize.h"
 #include <math.h>
 #include <string.h>
