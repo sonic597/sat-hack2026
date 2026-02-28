@@ -3,6 +3,7 @@
     {
       "name": "Arduino",
       "includePath": [
+        "${workspaceFolder}/demo",
         "${workspaceFolder}/lib",
         "${workspaceFolder}/tasks/**",
         "${env:HOME}/Arduino/libraries/sat-hack2026"
