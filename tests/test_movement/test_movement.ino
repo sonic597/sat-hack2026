@@ -10,14 +10,14 @@ void setup() {
 
 void loop() {
     Serial.println("Moving FORWARD for 2 seconds...");
-    forward_dist(30);
+    forward_dist(40);
 
     Serial.println("STOP for 1 second...");
     stopMotors();
     delay(1000);
 
     Serial.println("Moving BACKWARD for 2 seconds...");
-    reverse(30);
+    reverse(40);
 
     Serial.println("STOP for 1 second...");
     stopMotors();

@@ -1,11 +1,7 @@
 #include "../demo/ADCS.h"
+#include "calibration.h"
 
-const float MS_PER_DEG = 3.2;   // Calibrated value
-const int CRUISE_SPEED = 150;   // Speed used for all precision moves
-const int kTurnSpeed = 180;     // Speed used for turning
-
-const float MS_PER_CM = 27.8;   // cruising rate
-const int STARTUP_MS = 55.2;    // y-intercept
+const int STARTUP_MS = 0;    // y-intercept
 
 void stopMotors() {
     motorL(0,0);
