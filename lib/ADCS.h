@@ -1,3 +1,5 @@
+#ifndef ADCS_H
+#define ADCS_H
 #define  Trig A4 
 #define  Echo A5
 
@@ -17,6 +19,7 @@ float GetDistance()
   {
    distance = 400;
   }
+  Serial.print("[ADCS] duration="); Serial.print(duration); Serial.print(" us  distance="); Serial.print(distance); Serial.println(" cm");
 	return distance;
 }
 
@@ -33,3 +36,5 @@ void motorR(int steep1, int steep2)
    analogWrite(9,steep1);
    analogWrite(10,steep2);
 }
+
+#endif

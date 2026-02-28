@@ -74,7 +74,7 @@ static int s1_choose_dodge() {
     // Infer from sweep direction when debris was detected.
     // sweep_offset > 0 means car turned left (CCW); with side-mounted sensor this
     // sweeps the beam one way, implying debris is on that side of the field.
-    return SWEEP_DODGE_SIGN * ((s1_sweep_offset >= 0.0f) ? 1 : -1);
+    return SWEEP_DODGE_SIGN * ((s1_sweep_offset >= 0.0f) ? -1 : 1);
 }
 
 // Clamp dodge distance so the car cannot overshoot the boundary margin.
@@ -91,6 +91,9 @@ static float s1_clamp_dodge(int dir) {
 // -------------------------------------------------------------------------
 
 void setup() {
+    Serial.begin(9600);
+    Serial.println("[setup] Stage 1 Evasion starting...");
+
     hal_init();
     loc_reset();
 
@@ -99,11 +102,14 @@ void setup() {
     // This lets loc_get().x track lateral position within the 1.5m box.
     loc_update_turn(90.0f);
     loc_correct(START_X, 0.0f);
+    Serial.print("[setup] Initial position set to x="); Serial.print(START_X); Serial.println(" cm");
 
     s1_state        = SCANNING;
     s1_sweep_offset = 0.0f;
     s1_sweep_dir    = 1;
     s1_dodge_dir    = 1;
+
+    Serial.println("[setup] Done. Entering SCANNING state.");
 }
 
 void loop() {
@@ -113,29 +119,37 @@ void loop() {
     case SCANNING: {
         // Advance the sweep one step and take a sensor reading.
         float step = s1_sweep_dir * SWEEP_STEP_DEG;
-        turn_degrees(REF_SPEED, step);       // blocking; also updates localize heading
+        turnLeft(step);       // blocking; also updates localize heading
         s1_sweep_offset += step;
+        Serial.print("[SCANNING] sweep_offset="); Serial.print(s1_sweep_offset); Serial.print(" dir="); Serial.println(s1_sweep_dir);
 
         // Reverse sweep direction at the limits
         if (s1_sweep_offset >= SWEEP_MAX_DEG) {
             s1_sweep_offset =  SWEEP_MAX_DEG;
             s1_sweep_dir    = -1;
+            Serial.println("[SCANNING] Hit +limit, reversing sweep direction");
         } else if (s1_sweep_offset <= -SWEEP_MAX_DEG) {
             s1_sweep_offset = -SWEEP_MAX_DEG;
             s1_sweep_dir    =  1;
+            Serial.println("[SCANNING] Hit -limit, reversing sweep direction");
         }
 
         float dist = read_distance();
+        Serial.print("[SCANNING] distance="); Serial.print(dist); Serial.print(" cm (threshold="); Serial.print(INCOMING_THRESHOLD); Serial.println(")");
 
         if (dist < INCOMING_THRESHOLD) {
+            Serial.println("[SCANNING] *** DEBRIS DETECTED — transitioning to DODGING ***");
+
             // Debris incoming — record dodge direction while we still know
             // the sweep angle, then straighten up and evade.
             s1_dodge_dir = s1_choose_dodge();
+            Serial.print("[SCANNING] dodge_dir="); Serial.println(s1_dodge_dir);
 
             // Straighten heading before driving laterally.
             // turn_degrees sign convention: positive = left (CCW).
             // To undo a positive (left) offset we turn right (negative).
-            turn_degrees(REF_SPEED, -s1_sweep_offset);
+            turnRight(s1_sweep_offset);
+            Serial.print("[SCANNING] Straightened heading (turned right "); Serial.print(s1_sweep_offset); Serial.println(" deg)");
             s1_sweep_offset = 0.0f;
             s1_sweep_dir    = 1;
 
@@ -147,27 +161,29 @@ void loop() {
     // ------------------------------------------------------------------
     case DODGING: {
         float cm = s1_clamp_dodge(s1_dodge_dir);
+        Serial.print("[DODGING] dodge_dir="); Serial.print(s1_dodge_dir); Serial.print(" clamped_dist="); Serial.print(cm); Serial.println(" cm");
 
         if (cm > 0.0f) {
             if (s1_dodge_dir > 0) {
                 // Forward along wheel axis → +X in localize frame.
-                // move_forward_cm is calibrated and auto-updates localize.
-                move_forward_cm(DODGE_SPEED, cm);
+                Serial.println("[DODGING] Moving FORWARD");
+                forward_dist(cm);
             } else {
-                // Backward along wheel axis → −X in localize frame.
-                // No move_backward_cm; derive duration from MS_PER_CM at REF_SPEED.
-                // (MS_PER_CM is calibrated at REF_SPEED; scale proportionally.)
-                unsigned long ms = (unsigned long)(cm * MS_PER_CM
-                                   * ((float)REF_SPEED / DODGE_SPEED));
-                move_backward(DODGE_SPEED, ms);
+                Serial.println("[DODGING] Moving REVERSE");
+                reverse_dist(cm);
             }
+        } else {
+            Serial.println("[DODGING] No room to dodge (clamped to 0)");
         }
 
         // After the dodge, decide whether to recentre or resume scanning.
         float x = loc_get().x;
+        Serial.print("[DODGING] Post-dodge x="); Serial.print(x); Serial.println(" cm");
         if (x > EVASION_W_CM - RECENTRE_MARGIN || x < RECENTRE_MARGIN) {
+            Serial.println("[DODGING] Too close to edge — transitioning to RECENTRE");
             s1_state = RECENTRE;
         } else {
+            Serial.println("[DODGING] Position OK — resuming SCANNING");
             s1_state = SCANNING;
         }
         break;
@@ -179,23 +195,26 @@ void loop() {
         float centre = EVASION_W_CM / 2.0f;   // 75 cm
         float err    = x - centre;
         float cm     = (err < 0.0f) ? -err : err;
+        Serial.print("[RECENTRE] x="); Serial.print(x); Serial.print(" err="); Serial.print(err); Serial.print(" cm_to_move="); Serial.println(cm);
 
         if (cm < 5.0f) {
             // Close enough to centre; resume scanning
+            Serial.println("[RECENTRE] Close enough to centre — resuming SCANNING");
             s1_state = SCANNING;
             break;
         }
 
         if (err > 0.0f) {
             // Too far in +X → move backward (−X)
-            unsigned long ms = (unsigned long)(cm * MS_PER_CM
-                               * ((float)REF_SPEED / DODGE_SPEED));
-            move_backward(DODGE_SPEED, ms);
+            Serial.println("[RECENTRE] Too far right — moving REVERSE to centre");
+            reverse_dist(cm);
         } else {
             // Too far in −X → move forward (+X)
-            move_forward_cm(DODGE_SPEED, cm);
+            Serial.println("[RECENTRE] Too far left — moving FORWARD to centre");
+            forward_dist(cm);
         }
 
+        Serial.println("[RECENTRE] Done — resuming SCANNING");
         s1_state = SCANNING;
         break;
     }
