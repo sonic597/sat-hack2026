@@ -17,7 +17,7 @@ void loop() {
     delay(1000);
 
     Serial.println("Moving BACKWARD for 2 seconds...");
-    reverse(40);
+    reverse_dist(40);
 
     Serial.println("STOP for 1 second...");
     stopMotors();
